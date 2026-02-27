@@ -10,5 +10,5 @@ langchain-openai
 langchain-text-splitters
 faiss-cpu
 pypdf
-duckduckgo-search
+ddgs
 requests
