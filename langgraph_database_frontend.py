@@ -8,22 +8,30 @@ def check_password():
     """Returns true if the correct password is entered by the user"""
     def enter_password():
         """Checks whether the password entered by the user is correct or not"""
-        if(st.session_state["password"]==os.getenv("APP_PASSWORD")):
+        if st.session_state["password"] == os.getenv("APP_PASSWORD"):
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
-            st.session_state["correct_password"] = False
+            # FIX 1: Corrected the variable name typo
+            st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
+        # FIX 2: First load. Just show the box, NO error message.
+        st.text_input("Please enter the access password", type="password", on_change=enter_password, key="password")
+        return False
+        
+    elif not st.session_state["password_correct"]:
+        # FIX 3: Catch the wrong password specifically. Show box AND error.
         st.text_input("Please enter the access password", type="password", on_change=enter_password, key="password")
         st.error("😕 Password incorrect")
         return False
+        
     else:
+        # Password is correct! Let them in.
         return True
 
 if not check_password():
     st.stop()
-
 
 
 #*************************************************************Utility Functions***********************************************************
