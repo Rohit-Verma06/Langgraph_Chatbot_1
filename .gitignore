@@ -1,0 +1,19 @@
+# 1. API Keys and Secrets (CRITICAL)
+.env
+
+# 2. Database Files (Your private chat history)
+Chatbot.db
+*.db
+*.sqlite3
+
+# 3. Python Virtual Environments
+venv/
+env/
+.venv/
+
+# 4. Python Cache Files (Clutter)
+__pycache__/
+*.pyc
+
+# 5. Local PDF testing files
+*.pdf
