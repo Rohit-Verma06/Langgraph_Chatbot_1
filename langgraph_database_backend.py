@@ -30,7 +30,12 @@ def _get_retriever(thread_id : Optional[str]):
     return None
 model = ChatGroq(model = "llama-3.3-70b-versatile" , temperature=0)
 # model = ChatOpenAI()
-search_tool = DuckDuckGoSearchRun(region = "us-en")
+
+@tool 
+def WebSearch(query : str):
+    """This tool does Web Search for a given query"""
+    return DuckDuckGoSearchRun(region = "us-en").invoke(query)
+
 @tool
 def calculator(num1 : float , num2 : float , operation :str)->dict:
     """This tool does mathematical operations which includes addition,subtraction,multiplication,division"""
@@ -129,7 +134,7 @@ def rag_tool(query :str , thread_id : Optional[str] = None):
         "metadata" : metadata
     }
 
-tools = [search_tool , calculator,get_stock_price ,rag_tool]
+tools = [WebSearch , calculator,get_stock_price ,rag_tool]
 model_with_tools = model.bind_tools(tools)
 
 tools = ToolNode(tools)
