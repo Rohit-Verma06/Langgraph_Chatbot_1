@@ -10,14 +10,16 @@ from langchain_core.messages import BaseMessage,SystemMessage,HumanMessage,AIMes
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
-from langgraph.checkpoint.sqlite import SqliteSaver
+# from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.postgres import PostgresSaver
+from psycopg_pool  import ConnectionPool
 from langgraph.graph.message import add_messages
 from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_classic.tools import tool
 import requests
 from langgraph.prebuilt import tools_condition ,ToolNode
 from dotenv import load_dotenv
-import sqlite3
+# import sqlite3
 
 load_dotenv()
 
@@ -28,7 +30,7 @@ def _get_retriever(thread_id : Optional[str]):
     if(thread_id and thread_id in _THREAD_RETRIEVERS):
         return _THREAD_RETRIEVERS[thread_id]
     return None
-model = ChatGroq(model = "llama-3.3-70b-versatile" , temperature=0)
+model = ChatGroq(api_key=os.getenv("GROQ_API_KEY") , model = "llama-3.3-70b-versatile" , temperature=0)
 # model = ChatOpenAI()
 
 @tool 
@@ -163,9 +165,12 @@ def chat(state : chat_state ,config=None)->chat_state:
         messages = [system_message, *state["messages"]]
         output = model_with_tools.invoke(messages)
         return {"messages" : [output]}
-conn = sqlite3.connect(database = "Chatbot.db" , check_same_thread=False)
+# conn = sqlite3.connect(database = "Chatbot.db" , check_same_thread=False)
 
-checkpointer = SqliteSaver(conn=conn)
+# checkpointer = SqliteSaver(conn=conn)
+DB_URL = os.getenv("SUPABASE_DB_URL")
+pool = ConnectionPool(conninfo=DB_URL, kwargs={"autocommit": True})
+checkpointer = PostgresSaver(pool)
 
 def get_all_threads():
     all_threads=set()

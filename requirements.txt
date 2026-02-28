@@ -12,3 +12,6 @@ faiss-cpu
 pypdf
 ddgs
 requests
+psycopg_pool
+langgraph-checkpoint-postgres
+psycopg[binary,pool]

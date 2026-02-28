@@ -1,19 +1,33 @@
 # 1. API Keys and Secrets (CRITICAL)
 .env
+.streamlit/secrets.toml
 
-# 2. Database Files (Your private chat history)
+# 2. Database Files (No longer needed locally with Supabase)
 Chatbot.db
 *.db
 *.sqlite3
+*.db-journal
 
 # 3. Python Virtual Environments
 venv/
 env/
 .venv/
+ENV/
 
-# 4. Python Cache Files (Clutter)
+# 4. Python Cache and Metadata (Clutter)
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
 
-# 5. Local PDF testing files
+# 5. Local PDF testing and Temp Files
 *.pdf
+temp_*/
+/tmp/
+
+# 6. IDE Settings
+.vscode/
+.idea/
+.DS_Store
