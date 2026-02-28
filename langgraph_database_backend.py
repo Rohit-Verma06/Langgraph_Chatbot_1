@@ -135,7 +135,7 @@ def rag_tool(query :str , thread_id : Optional[str] = None):
     }
 
 tools = [web_search , calculator,get_stock_price ,rag_tool]
-model_with_tools = model.bind_tools(tools)
+model_with_tools = model.bind_tools(tools,parallel_tool_calls=False)
 
 tools = ToolNode(tools)
 class chat_state(TypedDict):

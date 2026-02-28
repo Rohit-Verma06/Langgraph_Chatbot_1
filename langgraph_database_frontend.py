@@ -161,6 +161,8 @@ else:
                     else:
                         continue
                     temp_message.append({"role" : role , "content" : message.content})
+                if(len(temp_message)>0 and temp_message[-1]["role"] == "user"):
+                    temp_message = temp_message[:-1]
                 st.session_state["history"] = temp_message
                 st.session_state["ingested_docs"].setdefault(str(thread_id) , {})
                 st.rerun()
