@@ -32,7 +32,7 @@ model = ChatGroq(model = "llama-3.3-70b-versatile" , temperature=0)
 # model = ChatOpenAI()
 
 @tool 
-def WebSearch(query : str):
+def Web_Search(query : str):
     """This tool does Web Search for a given query"""
     return DuckDuckGoSearchRun(region = "us-en").invoke(query)
 
@@ -134,7 +134,7 @@ def rag_tool(query :str , thread_id : Optional[str] = None):
         "metadata" : metadata
     }
 
-tools = [WebSearch , calculator,get_stock_price ,rag_tool]
+tools = [Web_Search , calculator,get_stock_price ,rag_tool]
 model_with_tools = model.bind_tools(tools)
 
 tools = ToolNode(tools)
@@ -151,7 +151,7 @@ def chat(state : chat_state ,config=None)->chat_state:
                 "You are a versatile assistant. You answer general knowledge directly OR use tools for specific data.\n\n"
                 "### TOOL RULES\n"
                 f"- For questions about PDFs, ONLY use `rag_tool` with thread_id: '{thread_id}'.\n"
-                "- For math, use `calculator`. For stocks, use `get_stock_price`. For web info, use `search_tool`.\n\n"
+                "- For math, use `calculator`. For stocks, use `get_stock_price`. For web info, use `Web_Search` tool.\n\n"
                 "### CRITICAL - AVOID API ERRORS\n"
                 "- IF the user asks for an essay, poem, recipe, or general code: DO NOT CALL ANY TOOLS.\n"
                 "- DO NOT say 'Let me check the document' or 'I will search for that'.\n"
