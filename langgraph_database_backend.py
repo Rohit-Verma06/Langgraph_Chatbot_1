@@ -55,7 +55,7 @@ def calculator(num1 : float , num2 : float , operation :str)->dict:
 def get_stock_price(company : str)->dict:
     """Fetch latest stock price for a given symbol (e.g. 'AAPL' , 'TSLA)
     using Finnhub with API key in the url"""
-    api_key = os.getenv["FINNHUB_API_KEY"]
+    api_key = os.getenv("FINNHUB_API_KEY")
     url = f"https://finnhub.io/api/v1/quote?symbol={company}&token={api_key}"
     response = requests.get(url).json()
     return response
