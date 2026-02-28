@@ -38,6 +38,8 @@ def check_password():
         # Password is correct! Let them in.
         return True
 
+if not check_password():
+    st.stop()
 #*************************************************************Utility Functions***********************************************************
 def generate_thread_id():
     thread_id = uuid.uuid4() # Universally Unique Identifier
