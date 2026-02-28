@@ -8,20 +8,28 @@ def check_password():
     """Returns true if the correct password is entered by the user"""
     def enter_password():
         """Checks whether the password entered by the user is correct or not"""
-        if st.session_state["password"] == os.getenv("APP_PASSWORD"):
+        
+        # FIX 1: Use .get() to completely prevent the KeyError!
+        entered_pwd = st.session_state.get("password", "")
+        
+        # FIX 2: Check BOTH local .env and the Streamlit Cloud Secrets
+        correct_pwd = os.getenv("APP_PASSWORD")
+        if not correct_pwd and "APP_PASSWORD" in st.secrets:
+            correct_pwd = st.secrets["APP_PASSWORD"]
+
+        if entered_pwd == correct_pwd:
             st.session_state["password_correct"] = True
-            del st.session_state["password"]
+            # Safely delete the password from memory only if it exists
+            if "password" in st.session_state:
+                del st.session_state["password"]
         else:
-            # FIX 1: Corrected the variable name typo
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # FIX 2: First load. Just show the box, NO error message.
         st.text_input("Please enter the access password", type="password", on_change=enter_password, key="password")
         return False
         
     elif not st.session_state["password_correct"]:
-        # FIX 3: Catch the wrong password specifically. Show box AND error.
         st.text_input("Please enter the access password", type="password", on_change=enter_password, key="password")
         st.error("😕 Password incorrect")
         return False
@@ -29,10 +37,6 @@ def check_password():
     else:
         # Password is correct! Let them in.
         return True
-
-if not check_password():
-    st.stop()
-
 
 #*************************************************************Utility Functions***********************************************************
 def generate_thread_id():
