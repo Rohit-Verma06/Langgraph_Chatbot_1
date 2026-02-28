@@ -171,8 +171,9 @@ else:
     
 
 for el in st.session_state["history"]:
-    with st.chat_message(el["role"]):
-        st.text(el["content"])
+    if(el["content"]):
+        with st.chat_message(el["role"]):
+            st.text(el["content"])
 
 
 user = st.chat_input("Type here")
@@ -188,7 +189,7 @@ if(user):
     with st.chat_message("assistant"):
         
         output = st.write_stream(
-            chunk.content for chunk , metadata in stream if(isinstance(chunk, AIMessage) )
+            chunk.content for chunk , metadata in stream if(isinstance(chunk, AIMessage))
         )
 
     st.session_state["history"].append({"role" : "assistant" , "content" : output})
