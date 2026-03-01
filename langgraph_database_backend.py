@@ -2,10 +2,11 @@ from langgraph.graph import StateGraph , START,END
 from langchain_openai import ChatOpenAI , OpenAIEmbeddings
 from langchain_groq import ChatGroq 
 # from langchain_huggingface import ChatHuggingFace , HuggingFaceEndpoint
-from typing import TypedDict ,Annotated ,Optional
+from typing import TypedDict ,Annotated ,Optional , Literal
 import os
 import tempfile
-from langchain_core.messages import BaseMessage,SystemMessage,HumanMessage,AIMessage
+from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import BaseMessage,SystemMessage,HumanMessage,AIMessage,RemoveMessage
 # from langgraph.checkpoint.memory import InMemorySaver
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFLoader
@@ -165,7 +166,41 @@ def chat(state : chat_state ,config=None)->chat_state:
         messages = [system_message, *state["messages"]]
         output = model_with_tools.invoke(messages)
         return {"messages" : [output]}
+
+def summarize(state : chat_state)->dict:
+    """This node summarizes the older 8 messages if the len(messages) becomes greater than 12"""
+    messages = state["messages"]
+    to_remove = messages[:8]
+    template = PromptTemplate(
+        template = """You are an expert AI memory manager for a conversational assistant.
+        Your task is to condense the provided conversation history into a single, highly concentrated summary message. 
+
+        The history provided below may contain a previous summary, user queries, tool outputs, and AI responses. 
+
+        Follow these strict rules:
+        1. Preserve all core facts, user preferences, technical requirements, and specific entities mentioned (e.g., code snippets, locations, or data points).
+        2. Eliminate conversational filler, pleasantries (e.g., "Hello", "How are you"), and redundant back-and-forth dialogue.
+        3. If the history already begins with an older summary, you MUST seamlessly integrate the new information into it. Do not drop older facts just because they are from a previous summary.
+        4. Write the summary from an objective, third-person perspective (e.g., "The user asked for...", "The AI provided a script for...").
+
+        Conversation History to Summarize:
+        {messages}
+
+        Concise Updated Summary:""",
+        input_variables=["messages"]
+    )
+    prompt = template.invoke({"messages" : to_remove})
+    summary = model.invoke(prompt).content
+    return {"messages" : [RemoveMessage(id = m.id) for m in to_remove] + [SystemMessage(content = summary)]}
 # conn = sqlite3.connect(database = "Chatbot.db" , check_same_thread=False)
+def check_condition(state : chat_state)->Literal[END , "Summarize" , "tools"]:
+    last_message = state['messages'][-1]
+    if(len(state["messages"]) > 12):
+        return "Summarize"
+    elif(hasattr(last_message , "tool_calls") and len(last_message.tool_calls)>0):
+        return "tools"
+    else:
+        return END
 
 # checkpointer = SqliteSaver(conn=conn)
 DB_URL = os.getenv("SUPABASE_DB_URL")
@@ -180,9 +215,11 @@ def get_all_threads():
 
 graph = StateGraph(chat_state)
 graph.add_node("Chat" , chat)
+graph.add_node("Summarize" , summarize)
 graph.add_node("tools" , tools)
 graph.add_edge(START,"Chat")
-graph.add_conditional_edges("Chat" , tools_condition)
+graph.add_conditional_edges("Chat" , check_condition)
+graph.add_edge("Summarize" , "Chat")
 graph.add_edge("tools" , "Chat")
 chatbot = graph.compile(checkpointer=checkpointer)
 
