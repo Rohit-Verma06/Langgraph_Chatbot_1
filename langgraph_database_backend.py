@@ -309,6 +309,21 @@ def check_condition(state : chat_state)->Literal[END , "Summarize" , "tools"]:
 # checkpointer = SqliteSaver(conn=conn)
 DB_URL = os.getenv("SUPABASE_DB_URL")
 pool = ConnectionPool(conninfo=DB_URL, kwargs={"autocommit": True})
+
+try:
+    with pool.connection() as conn:
+        conn.execute("DROP TABLE IF EXISTS checkpoints_migrations CASCADE;")
+        conn.execute("DROP TABLE IF EXISTS store_migrations CASCADE;")
+        conn.execute("DROP TABLE IF EXISTS checkpoints CASCADE;")
+        conn.execute("DROP TABLE IF EXISTS checkpoint_blobs CASCADE;")
+        conn.execute("DROP TABLE IF EXISTS checkpoint_writes CASCADE;")
+        conn.execute("DROP TABLE IF EXISTS store CASCADE;")
+        print("Successfully dropped all tables and migrations!")
+except Exception as e:
+    print(f"Error dropping tables: {e}")
+
+
+
 checkpointer = PostgresSaver(pool)
 checkpointer.setup()
 #store 
