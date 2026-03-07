@@ -310,10 +310,9 @@ def check_condition(state : chat_state)->Literal[END , "Summarize" , "tools"]:
 DB_URL = os.getenv("SUPABASE_DB_URL")
 pool = ConnectionPool(conninfo=DB_URL, kwargs={"autocommit": True})
 checkpointer = PostgresSaver(pool)
-checkpointer.setup()
 #store 
 store = PostgresStore(conn = pool)
-store.setup()
+
 
 def get_all_threads():
     all_threads=set()
