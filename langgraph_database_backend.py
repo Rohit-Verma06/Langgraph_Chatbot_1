@@ -1,5 +1,5 @@
 from langgraph.graph import StateGraph , START,END
-from langchain_openai import ChatOpenAI , OpenAIEmbeddings
+from langchain_openai import  OpenAIEmbeddings
 from langchain_groq import ChatGroq 
 # from langchain_huggingface import ChatHuggingFace , HuggingFaceEndpoint
 from typing import TypedDict ,Annotated ,Optional , Literal
@@ -21,7 +21,7 @@ from langchain_community.tools import DuckDuckGoSearchRun
 from langchain_core.tools import tool
 from langchain_core.runnables import RunnableConfig
 import requests
-from langgraph.prebuilt import tools_condition ,ToolNode
+from langgraph.prebuilt import ToolNode
 from pydantic import Field , BaseModel
 from typing import List 
 from langgraph.store.base import BaseStore
@@ -143,9 +143,9 @@ def rag_tool(query :str , thread_id : Optional[str] = None):
         "metadata" : metadata
     }
 
-tools = [web_search , calculator,get_stock_price ,rag_tool]
-model_with_tools = model.bind_tools(tools,parallel_tool_calls=False)
-tools = ToolNode(tools)
+tools_list = [web_search , calculator,get_stock_price ,rag_tool]
+model_with_tools = model.bind_tools(tools_list,parallel_tool_calls=False)
+tools = ToolNode(tools_list)
 
 class chat_state(TypedDict):
     messages : Annotated[list[BaseMessage]  ,add_messages]
