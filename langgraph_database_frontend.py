@@ -43,19 +43,19 @@ if not check_password():
 #*************************************************************Utility Functions***********************************************************
 def generate_thread_id():
     thread_id = uuid.uuid4() # Universally Unique Identifier
-    return thread_id
+    return str(thread_id)
 
 def generate_user_id():
     user_id = uuid.uuid4()
-    return user_id
+    return str(user_id)
 
 def reset_chat():
-    thread_id = str(generate_thread_id())
-    user_id = str(generate_user_id())
+    thread_id = generate_thread_id()
+    user_id = generate_user_id()
     st.session_state["thread_id"] = thread_id
     st.session_state["user_id"] = user_id
-    append_thread_id(st.session_state["thread_id"])
-    append_user_id(st.session_state["thread_id"])
+    append_thread_id(thread_id)
+    append_user_id(user_id)
     # st.session_state["chat_titles"][st.session_state["thread_id"]] = "Current Chat"
     st.session_state["history"]=[]
 
