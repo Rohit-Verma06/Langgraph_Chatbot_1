@@ -195,7 +195,7 @@ for el in st.session_state["history"]:
 
 
 user = st.chat_input("Type here")
-config = {"configurable" : {"thread_id" : st.session_state["thread_id"] ,"user_id" : st.session_state["user_id"]} , "metadata": {"thread_id" : st.session_state["thread_id"]}}
+config = {"configurable" : {"thread_id" : st.session_state["thread_id"] ,"user_id" : str(st.session_state["user_id"])} , "metadata": {"thread_id" : st.session_state["thread_id"]}}
 if(user):
     st.session_state["history"].append({"role" : "user" , "content" : user})
     with st.chat_message("user"):
