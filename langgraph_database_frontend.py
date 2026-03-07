@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from dotenv import load_dotenv
-from langgraph_database_backend import chatbot , HumanMessage  , get_all_threads,AIMessage , thread_document_metadata,ingest_pdf,SystemMessage
+from langgraph_database_backend import chatbot , HumanMessage  , get_all_threads,AIMessage , thread_document_metadata,ingest_pdf,SystemMessage, get_user_ids
 import uuid
 load_dotenv()
 def check_password():
@@ -45,6 +45,10 @@ def generate_thread_id():
     thread_id = uuid.uuid4() # Universally Unique Identifier
     return thread_id
 
+def generate_user_id():
+    user_id = uuid.uuid4()
+    return user_id
+
 def reset_chat():
     thread_id = generate_thread_id()
     st.session_state["thread_id"] = thread_id
@@ -55,6 +59,10 @@ def reset_chat():
 def append_thread_id(thread_id):
     if(thread_id not in st.session_state["list_thread_ids"]):
         st.session_state["list_thread_ids"].append(thread_id)
+
+def append_user_id(user_id):
+    if(user_id not in st.session_state["list_user_ids"]):
+        st.session_state["list_user_ids"].append(user_id)
 
 def load_conversation(thread_id):
     output = chatbot.get_state(config={"configurable" : {"thread_id" : thread_id}})
@@ -72,6 +80,8 @@ if "history" not in st.session_state:
 if 'thread_id' not in st.session_state:
     st.session_state["thread_id"] = generate_thread_id()
 
+if 'user_id' not in st.session_state:
+    st.session_state["user_id"] = generate_user_id()
 
 if 'list_thread_ids' not in st.session_state:
     st.session_state["list_thread_ids"] = get_all_threads()
@@ -79,6 +89,12 @@ if 'list_thread_ids' not in st.session_state:
         st.session_state["list_thread_ids"].append(st.session_state["thread_id"])
     append_thread_id(st.session_state["thread_id"])
 
+if 'list_user_ids' not in st.session_state:
+    st.session_state["list_user_ids"] = get_user_ids()
+    if(len(st.session_state["list_user_ids"]) == 0):
+        st.session_state["list_user_ids"].append(st.session_state["user_id"])
+    append_user_id(st.session_state["user_id"])
+    
 if "ingested_docs" not in st.session_state:
     st.session_state["ingested_docs"]={}
 
@@ -175,15 +191,15 @@ else:
 for el in st.session_state["history"]:
     if(el["content"]):
         with st.chat_message(el["role"]):
-            st.text(el["content"])
+            st.markdown(el["content"])
 
 
 user = st.chat_input("Type here")
-config = {"configurable" : {"thread_id" : st.session_state["thread_id"]} , "metadata": {"thread_id" : st.session_state["thread_id"]}}
+config = {"configurable" : {"thread_id" : st.session_state["thread_id"] ,"user_id" : st.session_state["user_id"]} , "metadata": {"thread_id" : st.session_state["thread_id"]}}
 if(user):
     st.session_state["history"].append({"role" : "user" , "content" : user})
     with st.chat_message("user"):
-        st.text(user)
+        st.markdown(user)
     
     
     stream = chatbot.stream({'messages' : HumanMessage(user)} , config=config , stream_mode="messages")

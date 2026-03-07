@@ -5,6 +5,7 @@ from langchain_groq import ChatGroq
 from typing import TypedDict ,Annotated ,Optional , Literal
 import os
 import tempfile
+import uuid
 from langchain_core.prompts import PromptTemplate
 from langchain_core.messages import BaseMessage,SystemMessage,HumanMessage,AIMessage,RemoveMessage
 # from langgraph.checkpoint.memory import InMemorySaver
@@ -13,12 +14,17 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
 # from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.store.postgres import PostgresStore
 from psycopg_pool  import ConnectionPool
 from langgraph.graph.message import add_messages
 from langchain_community.tools import DuckDuckGoSearchRun
-from langchain_classic.tools import tool
+from langchain_core.tools import tool
+from langchain_core.runnables import RunnableConfig
 import requests
 from langgraph.prebuilt import tools_condition ,ToolNode
+from pydantic import Field , BaseModel
+from typing import List 
+from langgraph.store.base import BaseStore
 from dotenv import load_dotenv
 # import sqlite3
 
@@ -139,12 +145,75 @@ def rag_tool(query :str , thread_id : Optional[str] = None):
 
 tools = [web_search , calculator,get_stock_price ,rag_tool]
 model_with_tools = model.bind_tools(tools,parallel_tool_calls=False)
-
 tools = ToolNode(tools)
+
 class chat_state(TypedDict):
     messages : Annotated[list[BaseMessage]  ,add_messages]
 
-def chat(state : chat_state ,config=None)->chat_state:
+class memory_item(BaseModel):
+    text : str = Field(description= "Atomic user memory as a short sentence")
+    is_new : bool = Field(description= "True if this memory is New and should be stored. False if duplicate/already known")
+
+class memory_schema(BaseModel):
+    should_write : bool = Field(description= "Whether to store any memories")
+    memory : List[memory_item]  = Field(default_factory=list , description= "Atomic user memories to add")
+
+structured_model = model.with_structured_output(schema = memory_schema)
+
+def create(state : chat_state , config : RunnableConfig , store : BaseStore):
+    user_id = config["configurable"]["user_id"]
+    namespace = ("users" , user_id , "details")
+    items = store.search(namespace)
+    if(items):
+        previous_memory = "\n".join(item.value["data"]["text"] for item in items)
+    else:
+        previous_memory = "No previous memory"
+    for message in state["messages"][::-1]:
+        if(isinstance(message , HumanMessage)):
+            last_message = message
+            break
+    template = PromptTemplate(
+        template = """
+        You are a precision memory extractor. Your goal is to find durable facts about the user.
+
+        PREVIOUS MEMORIES:
+        {previous_memory}
+
+        USER MESSAGE:
+        {message}
+
+        TASK:
+        1. Extract ALL durable facts. Look specifically for:
+        - Identity: Name, Location, Bio.
+        - Professional: Job, Skills, Internships.
+        - Technical: Preferred programming languages (e.g., Python), frameworks, tools.
+        - Projects: Current or past work.
+        2. **Atomic Splitting**: If a message contains multiple facts (e.g., "I am a student AND I like Python"), treat them as separate items.
+        3. **Duplicate Filter**: Compare each fact to PREVIOUS MEMORIES.
+        - If the fact is totally NEW: set is_new = true.
+        - If the fact is ALREADY KNOWN: set is_new = false.
+        4. **Normalized Third-Person**: "I prefer python" -> "User prefers the Python programming language."
+
+        Example: 
+        Message: "My project is a chatbot and I use Python."
+        If "chatbot" is already known, but "Python" is not:
+        - Item 1: "User is working on a chatbot." (is_new: false)
+        - Item 2: "User prefers using the Python programming language." (is_new: true)
+
+        Return as valid JSON.
+        """,
+        input_variables=["message", "previous_memory"]
+    )
+    prompt = template.invoke({"message" : last_message , "previous_memory" : previous_memory})
+    output = structured_model.invoke(prompt)
+    if(output.should_write):
+        for memory in output.memory:
+            if(memory.is_new):
+                store.put(namespace , str(uuid.uuid4()) , {"data" : memory.model_dump()})
+        
+    return {}
+
+def chat(state : chat_state ,config : RunnableConfig , store : BaseStore):
         """LLM node that may answer or request for a tool call"""
         if(config and isinstance(config, dict)):
             thread_id = config.get("configurable" , {}).get("thread_id")
@@ -162,8 +231,43 @@ def chat(state : chat_state ,config=None)->chat_state:
                 "- If you decide to use a tool, TRIGGER it immediately. NO PREAMBLE."
             )
         )
+        user_id = config["configurable"]["user_id"]
+        namespace = ("users" , user_id , "details")
+        items = store.search(namespace)
+        if(items):
+            existing_memories = "\n".join(item.value["data"]["text"] for item in items)
+        else:
+            existing_memories = "No existing_memories"
+        
+        template = """You are a helpful assistant with memory capabilities.
+        If user-specific memory is available, use it to personalize 
+        your responses based on what you know about the user.
 
-        messages = [system_message, *state["messages"]]
+        Your goal is to provide relevant, friendly, and tailored 
+        assistance that reflects the user’s preferences, context, and past interactions.
+
+        If the user’s name or relevant personal context is available, always personalize your responses by:
+            – Always Address the user by name (e.g., "Sure, [User Name]...") when appropriate
+            – Referencing known projects, tools, or preferences (e.g., "your MCP  server python based project")
+            – Adjusting the tone to feel friendly, natural, and directly aimed at the user
+
+        Avoid generic phrasing when personalization is possible. For example, instead of "In TypeScript apps..." 
+        say "Since your project is built with TypeScript..."
+
+        Use personalization especially in:
+            – Greetings and transitions
+            – Help or guidance tailored to tools and frameworks the user uses
+            – Follow-up messages that continue from past context
+
+        Always ensure that personalization is based only on known user details and not assumed.
+
+        In the end suggest 3 relevant further questions based on the current response and user profile
+
+        The user’s memory (which may be empty) is provided as: {user_details_content}
+        """
+        prompt = template.format(user_details_content = existing_memories)
+
+        messages = [[SystemMessage(content = prompt)] , [system_message], *state["messages"]]
         output = model_with_tools.invoke(messages)
         return {"messages" : [output]}
 
@@ -207,21 +311,32 @@ DB_URL = os.getenv("SUPABASE_DB_URL")
 pool = ConnectionPool(conninfo=DB_URL, kwargs={"autocommit": True})
 checkpointer = PostgresSaver(pool)
 
+#store 
+store = PostgresStore(conn = pool)
+
 def get_all_threads():
     all_threads=set()
     for checkpoint in checkpointer.list(None):
         all_threads.add(checkpoint.config["configurable"]["thread_id"])
     return list(all_threads)
 
+def get_user_ids():
+    all_user_ids= set()
+    for el in checkpointer.list(None):
+        all_user_ids.add(el.config["configurable"]["user_id"])
+    return list(all_user_ids)
+
 graph = StateGraph(chat_state)
+graph.add_node("Create_memory" , create)
 graph.add_node("Chat" , chat)
 graph.add_node("Summarize" , summarize)
 graph.add_node("tools" , tools)
-graph.add_edge(START,"Chat")
+graph.add_edge(START,"Create_memory")
+graph.add_edge("Create_memory","Chat")
 graph.add_conditional_edges("Chat" , check_condition)
 graph.add_edge("Summarize" , "Chat")
 graph.add_edge("tools" , "Chat")
-chatbot = graph.compile(checkpointer=checkpointer)
+chatbot = graph.compile(checkpointer=checkpointer , store = store)
 
 def thread_document_metadata(thread_id :str):
     return _THREAD_METADATA.get(str(thread_id) , {})
