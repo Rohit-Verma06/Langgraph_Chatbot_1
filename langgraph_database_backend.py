@@ -161,7 +161,7 @@ class memory_schema(BaseModel):
 structured_model = model.with_structured_output(schema = memory_schema)
 
 def create(state : chat_state , config : RunnableConfig , store : BaseStore):
-    user_id = config["configurable"]["user_id"]
+    user_id = str(config["configurable"]["user_id"])
     namespace = ("users" , user_id , "details")
     items = store.search(namespace)
     if(items):
@@ -231,7 +231,7 @@ def chat(state : chat_state ,config : RunnableConfig , store : BaseStore):
                 "- If you decide to use a tool, TRIGGER it immediately. NO PREAMBLE."
             )
         )
-        user_id = config["configurable"]["user_id"]
+        user_id = str(config["configurable"]["user_id"])
         namespace = ("users" , user_id , "details")
         items = store.search(namespace)
         if(items):
