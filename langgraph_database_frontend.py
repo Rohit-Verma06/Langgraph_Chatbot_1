@@ -50,9 +50,12 @@ def generate_user_id():
     return user_id
 
 def reset_chat():
-    thread_id = generate_thread_id()
+    thread_id = str(generate_thread_id())
+    user_id = str(generate_user_id())
     st.session_state["thread_id"] = thread_id
+    st.session_state["user_id"] = user_id
     append_thread_id(st.session_state["thread_id"])
+    append_user_id(st.session_state["thread_id"])
     # st.session_state["chat_titles"][st.session_state["thread_id"]] = "Current Chat"
     st.session_state["history"]=[]
 
@@ -165,8 +168,8 @@ if(not st.session_state["list_thread_ids"]):
 else:
     for thread_id in st.session_state["list_thread_ids"][::-1]:
         if(st.sidebar.button(str(thread_id) )):
-            st.session_state["thread_id"] = thread_id
-            messages = load_conversation(thread_id)
+            st.session_state["thread_id"] = str(thread_id)
+            messages = load_conversation(str(thread_id))
             if(messages and messages.values):
                 temp_message = []
                 for message in messages.values["messages"]:
@@ -195,7 +198,7 @@ for el in st.session_state["history"]:
 
 
 user = st.chat_input("Type here")
-config = {"configurable" : {"thread_id" : st.session_state["thread_id"] ,"user_id" : str(st.session_state["user_id"])} , "metadata": {"thread_id" : st.session_state["thread_id"]}}
+config = {"configurable" : {"thread_id" : str(st.session_state["thread_id"]) ,"user_id" : str(st.session_state["user_id"])} , "metadata": {"thread_id" : str(st.session_state["thread_id"])}}
 if(user):
     st.session_state["history"].append({"role" : "user" , "content" : user})
     with st.chat_message("user"):
