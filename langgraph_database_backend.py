@@ -320,13 +320,17 @@ store = PostgresStore(conn = pool)
 def get_all_threads():
     all_threads=set()
     for checkpoint in checkpointer.list(None):
-        all_threads.add(checkpoint.config["configurable"].get("thread_id"))
+        thread_id = checkpoint.config["configurable"].get("thread_id")
+        if(thread_id):
+            all_threads.add(thread_id)
     return list(all_threads)
 
 def get_user_ids():
     all_user_ids= set()
     for el in checkpointer.list(None):
-        all_user_ids.add(el.config["configurable"].get("user_id"))
+        user_id = el.config["configurable"].get("user_id")
+        if(user_id):
+            all_user_ids.add(user_id)
     return list(all_user_ids)
 
 graph = StateGraph(chat_state)
