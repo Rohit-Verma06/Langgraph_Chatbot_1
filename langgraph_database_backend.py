@@ -300,37 +300,16 @@ def summarize(state : chat_state)->dict:
 # conn = sqlite3.connect(database = "Chatbot.db" , check_same_thread=False)
 def check_condition(state : chat_state)->Literal[END , "Summarize" , "tools"]:
     last_message = state['messages'][-1]
-    if(len(state["messages"]) > 12):
-        return "Summarize"
-    elif(hasattr(last_message , "tool_calls") and len(last_message.tool_calls)>0):
+    if(hasattr(last_message , "tool_calls") and len(last_message.tool_calls)>0):
         return "tools"
+    elif(len(state["messages"]) > 12):
+        return "Summarize"
     else:
         return END
 
 # checkpointer = SqliteSaver(conn=conn)
 DB_URL = os.getenv("SUPABASE_DB_URL")
 pool = ConnectionPool(conninfo=DB_URL, kwargs={"autocommit": True , "row_factory": dict_row})
-
-# try:
-#     with pool.connection() as conn:
-#         conn.execute("DROP TABLE IF EXISTS checkpoints_migrations CASCADE;")
-#         conn.execute("DROP TABLE IF EXISTS store_migrations CASCADE;")
-#         conn.execute("DROP TABLE IF EXISTS checkpoints CASCADE;")
-#         conn.execute("DROP TABLE IF EXISTS checkpoint_blobs CASCADE;")
-#         conn.execute("DROP TABLE IF EXISTS checkpoint_writes CASCADE;")
-#         conn.execute("DROP TABLE IF EXISTS store CASCADE;")
-#         print("Successfully dropped all tables and migrations!")
-# except Exception as e:
-#     print(f"Error dropping tables: {e}")
-
-with pool.connection() as conn:
-    # Setup Checkpointer
-    checkpointer = PostgresSaver(conn)
-    checkpointer.setup()
-    
-    # Setup Store
-    store = PostgresStore(conn)
-    store.setup()
 
 checkpointer = PostgresSaver(pool)
 
@@ -358,7 +337,7 @@ graph.add_node("tools" , tools)
 graph.add_edge(START,"Create_memory")
 graph.add_edge("Create_memory","Chat")
 graph.add_conditional_edges("Chat" , check_condition)
-graph.add_edge("Summarize" , "Chat")
+graph.add_edge("Summarize" , END)
 graph.add_edge("tools" , "Chat")
 chatbot = graph.compile(checkpointer=checkpointer , store = store)
 
