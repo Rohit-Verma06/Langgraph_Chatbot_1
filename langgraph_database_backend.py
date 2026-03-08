@@ -268,7 +268,7 @@ def chat(state : chat_state ,config : RunnableConfig , store : BaseStore):
         """
         prompt = template.format(user_details_content = existing_memories)
 
-        messages = [[SystemMessage(content = prompt)] , [system_message], *state["messages"]]
+        messages = [SystemMessage(content = prompt) , system_message, *state["messages"]]
         output = model_with_tools.invoke(messages)
         return {"messages" : [output]}
 
