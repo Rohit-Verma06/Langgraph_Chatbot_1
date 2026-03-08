@@ -148,7 +148,7 @@ if(thread_docs):
 else:
     st.sidebar.info("No pdf ingested yet")
 
-uploaded_pdf = st.sidebar.file_uploader("Upload a pdf for this chat" , type= ["pdf"])
+uploaded_pdf = st.sidebar.file_uploader("Upload a pdf for this chat" , type= ["pdf"] , key = thread_key)
 if(uploaded_pdf):
     if uploaded_pdf.name in thread_docs:
         st.sidebar.info(f"The file {uploaded_pdf.name} already processed for this chat")
@@ -161,6 +161,7 @@ if(uploaded_pdf):
             )
             thread_docs[uploaded_pdf.name] = summary
             status_box.update(label = "✅ PDF indexed" , state = "complete", expanded=False)
+            st.rerun()
 
 st.sidebar.subheader("Past conversations")
 if(not st.session_state["list_thread_ids"]):
