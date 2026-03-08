@@ -15,6 +15,7 @@ from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
 # from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.store.postgres import PostgresStore
+from psycopg.rows import dict_row
 from psycopg_pool  import ConnectionPool
 from langgraph.graph.message import add_messages
 from langchain_community.tools import DuckDuckGoSearchRun
@@ -308,27 +309,34 @@ def check_condition(state : chat_state)->Literal[END , "Summarize" , "tools"]:
 
 # checkpointer = SqliteSaver(conn=conn)
 DB_URL = os.getenv("SUPABASE_DB_URL")
-pool = ConnectionPool(conninfo=DB_URL, kwargs={"autocommit": True})
+pool = ConnectionPool(conninfo=DB_URL, kwargs={"autocommit": True , "row_factory": dict_row})
 
-try:
-    with pool.connection() as conn:
-        conn.execute("DROP TABLE IF EXISTS checkpoints_migrations CASCADE;")
-        conn.execute("DROP TABLE IF EXISTS store_migrations CASCADE;")
-        conn.execute("DROP TABLE IF EXISTS checkpoints CASCADE;")
-        conn.execute("DROP TABLE IF EXISTS checkpoint_blobs CASCADE;")
-        conn.execute("DROP TABLE IF EXISTS checkpoint_writes CASCADE;")
-        conn.execute("DROP TABLE IF EXISTS store CASCADE;")
-        print("Successfully dropped all tables and migrations!")
-except Exception as e:
-    print(f"Error dropping tables: {e}")
+# try:
+#     with pool.connection() as conn:
+#         conn.execute("DROP TABLE IF EXISTS checkpoints_migrations CASCADE;")
+#         conn.execute("DROP TABLE IF EXISTS store_migrations CASCADE;")
+#         conn.execute("DROP TABLE IF EXISTS checkpoints CASCADE;")
+#         conn.execute("DROP TABLE IF EXISTS checkpoint_blobs CASCADE;")
+#         conn.execute("DROP TABLE IF EXISTS checkpoint_writes CASCADE;")
+#         conn.execute("DROP TABLE IF EXISTS store CASCADE;")
+#         print("Successfully dropped all tables and migrations!")
+# except Exception as e:
+#     print(f"Error dropping tables: {e}")
 
-
+with pool.connection() as conn:
+    # Setup Checkpointer
+    checkpointer = PostgresSaver(conn)
+    checkpointer.setup()
+    
+    # Setup Store
+    store = PostgresStore(conn)
+    store.setup()
 
 checkpointer = PostgresSaver(pool)
-checkpointer.setup()
+
 #store 
 store = PostgresStore(conn = pool)
-store.setup()
+
 
 def get_all_threads():
     all_threads=set()
